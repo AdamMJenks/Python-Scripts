@@ -1,11 +1,14 @@
 ### Smith matrix scoring for Welkin lab for evolution study of ERV
 ### Takes prealigned (usually CLUSTALW) amino acid fasta file as input (each sequence on single line, not multiple.  Remove wrapping)
 ### Use all uppercase amino acids (CLUSTAL option turn off)
-### Prompt: python Smithmatrix.py [input file] [output final] [iteration file base name]
+### Prompt: python Smithmatrix.py [input file] [Final Output File Name] [Directory to place files] [iteration file base name]
 
 #!/usr/bin/python
 
 import sys
+import os
+import shutil
+
 
 ### Matrix scoring dictionary as previously published
 
@@ -34,10 +37,19 @@ Smithmatrixdict = {'D=D': 0,'D=E': 1,'D=K': 2,'D=R': 2,'D=H': 2,'D=N': 2,'D=Q':
 
 inputfile = str(sys.argv[1])
 outputfile = str(sys.argv[2])
+directname = str(sys.argv[3])
+basename = (str(sys.argv[4]))
+
+if os.path.exists(directname):          ###Remove old directory incase redoing program
+    shutil.rmtree(directname)
+    
+os.mkdir(directname)                    ###Make directory told in argument 3
 
 file = open(inputfile, 'r')
 
-linelist = file.readlines()     ### All lines in the fasta file (sequences and IDs)
+linelist = [line.strip() for line in open(sys.argv[1])]  ### All lines in the fasta file (sequences and IDs), strip lines 
+
+
 count = len(linelist)           ### Number of lines in fasta file for looping purposes
 
 consensus = tuple(linelist[1])  ### Not actually consensus, just first sequence in the list used to initialize the score(k) function, what's compared to
@@ -67,28 +79,45 @@ def score(k):
 
 for i in range(3,count,2):
     exper = linelist[i]                                                 ### Exper list is now the new sequence for each loop
-    print linelist[i]                                                   ### For command line/running QC purposes
+    print linelist[i-1], 'ANALYZED'                                     ###QC so the user know what is being analyzed
     
     ### Loop through each amino acid to be compared in consensus and exper list
     
     for k in range(0,amino-1):
+        
         if i == 3:                                                      ### For first loop to fill all of the lists
             comparelist.append(consensus[k] + '=' + exper[k])
             pair = comparelist[k]
             tempscore = score(k)
             initial.append(tempscore)
+            
         if i > 3:                                                       ### All other loops to add to the score
             comparelist[k] = (consensus[k] + '=' + exper[k])
             pair = comparelist[k]
             tempscore = score(k)
             initial[k] = initial[k] + tempscore
-            print pair, initial[k]   ### for QC purposes
-    print exper + str(i)             ### for QC purposes
+            
+    linetoprint = linelist[i-1]
+    name = linetoprint[1:]
+    basefile = os.path.realpath(os.path.join(directname,basename + '_' + str(i) + "_" + name))          ### Make a path for the file to be made in the directory given
+    output = open(os.path.realpath(basefile),'w')                                           ### output for the file to be put into
     
-output = open(outputfile,'w')                   ### open output file and make it writeable
+    for k in range(0,amino-1):                  ###Loop through each amino acid and write it in tab delimited form into file
+        if k == 0:
+            linetoprint = linelist[i-1]
+            print>>output, "Amino Acid", "\t",linetoprint[1:]               #Headers for output files of Amino Acid and whichever species was analyzed 
+        print>>output, k+1,'\t', initial[k]
+    
+    
+output = open(outputfile,'w')         ### open output file and make it writeable
 
-### Loop through the number of amino acids and print the amino acids position, the consensus amino acid and the total score 
+
+### Loop through the number of amino acids and print the amino acids position, the consensus amino acid and the total score, FINAL SCORE, not new in directory 
 
 for k in range(0,amino-1):
-    print>>output, k+1, consensus[k], initial[k]   
+    if k == 0:
+            print>>output, "Site Number", "\t",'Amino Acid',"\t",'Score'
+    print>>output, k+1, consensus[k], initial[k]
+    
+
     
